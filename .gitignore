@@ -11,3 +11,6 @@ BackupTools/
 *.suo
 **/secrets.json
 appsettings.Local.json
+migrate_to_neon.py
+Program.cs.bak
+neon_schema.sql
