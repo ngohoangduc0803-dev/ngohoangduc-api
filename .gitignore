@@ -1,0 +1,13 @@
+
+bin/
+obj/
+.vs/
+.vscode/
+AdminSetup/
+BackupTools/
+.env
+.env.*
+*.user
+*.suo
+**/secrets.json
+appsettings.Local.json
