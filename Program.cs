@@ -203,7 +203,8 @@ builder.Services.AddAuthorization();
 // 5. EMAIL OTP SERVICE
 // ==============================================
 
-builder.Services.AddScoped<EmailService>();
+builder.Services.AddHttpClient<EmailService>(http =>
+    http.Timeout = TimeSpan.FromSeconds(20));
 
 // ==============================================
 // 6. CREATE APPLICATION

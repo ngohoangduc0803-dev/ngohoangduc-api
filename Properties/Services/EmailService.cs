@@ -2,6 +2,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Encodings.Web;
+using System.Text.Json;
 
 namespace ngohoangduc.Services;
 
@@ -9,14 +10,12 @@ public class EmailService
 {
     private readonly IConfiguration _configuration;
 
-    private static readonly HttpClient Http = new()
-    {
-        Timeout = TimeSpan.FromSeconds(20)
-    };
+    private readonly HttpClient _http;
 
-    public EmailService(IConfiguration configuration)
+    public EmailService(IConfiguration configuration, HttpClient http)
     {
         _configuration = configuration;
+        _http = http;
     }
 
     public async Task SendOtpAsync(string email, string otp)
@@ -28,8 +27,9 @@ public class EmailService
 
         if (string.IsNullOrWhiteSpace(apiKey))
         {
-            throw new InvalidOperationException(
-                "Chua cau hinh Resend:ApiKey"
+            throw new EmailDeliveryException(
+                "EMAIL_NOT_CONFIGURED",
+                "Dich vu gui OTP chua duoc cau hinh. Vui long lien he quan tri vien."
             );
         }
 
@@ -83,19 +83,62 @@ public class EmailService
         request.Headers.Authorization =
             new AuthenticationHeaderValue(
                 "Bearer",
-                apiKey
+                apiKey.Trim()
             );
 
         request.Content = JsonContent.Create(payload);
 
-        using var response = await Http.SendAsync(request);
+        using var response = await _http.SendAsync(request);
 
         if (!response.IsSuccessStatusCode)
         {
-            throw new HttpRequestException(
-                "Resend khong gui duoc email OTP. " +
-                $"HTTP status: {(int)response.StatusCode}"
-            );
+            // Inspect provider errors without returning their raw text, email addresses or secrets.
+            var providerMessage = "";
+            try
+            {
+                using var error = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                if (error.RootElement.ValueKind == JsonValueKind.Object
+                    && error.RootElement.TryGetProperty("message", out var message)
+                    && message.ValueKind == JsonValueKind.String)
+                {
+                    providerMessage = message.GetString() ?? "";
+                }
+            }
+            catch (JsonException) { }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Forbidden
+                && providerMessage.Contains("testing emails", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new EmailDeliveryException("EMAIL_TEST_MODE",
+                    "Resend dang o che do thu, chua the gui OTP den email nay. "
+                    + "Quan tri vien can xac minh ten mien gui email tren Resend.");
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Forbidden
+                && providerMessage.Contains("domain", StringComparison.OrdinalIgnoreCase)
+                && providerMessage.Contains("not verified", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new EmailDeliveryException("EMAIL_DOMAIN_NOT_VERIFIED",
+                    "Ten mien gui email chua duoc xac minh tren Resend. "
+                    + "Vui long lien he quan tri vien.");
+            }
+
+            if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized
+                or System.Net.HttpStatusCode.Forbidden)
+            {
+                throw new EmailDeliveryException("EMAIL_PROVIDER_AUTH_FAILED",
+                    "Cau hinh quyen gui email Resend khong hop le. "
+                    + "Vui long lien he quan tri vien.");
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                throw new EmailDeliveryException("EMAIL_RATE_LIMITED",
+                    "Dich vu email dang gioi han luot gui. Vui long thu lai sau.");
+            }
+
+            throw new EmailDeliveryException("EMAIL_SERVICE_UNAVAILABLE",
+                "Dich vu email tam thoi khong gui duoc OTP. Vui long thu lai sau.");
         }
     }
 }

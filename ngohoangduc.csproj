@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);tests/**</DefaultItemExcludes>
     <UserSecretsId>d96c9eb2-3078-4809-a37e-543ee5b910bc</UserSecretsId>
   </PropertyGroup>
 

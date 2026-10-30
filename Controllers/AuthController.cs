@@ -23,19 +23,22 @@ public class AuthController : ControllerBase
     private readonly EmailService _email;
     private readonly IConfiguration _config;
     private readonly IMemoryCache _cache;
+    private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         UserManager<AppUser> users,
         SignInManager<AppUser> signIn,
         EmailService email,
         IConfiguration config,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        ILogger<AuthController> logger)
     {
         _users = users;
         _signIn = signIn;
         _email = email;
         _config = config;
         _cache = cache;
+        _logger = logger;
     }
 
     // 1. DANG KY TAI KHOAN NHAN VIEN
@@ -179,13 +182,23 @@ public class AuthController : ControllerBase
                 otp
             );
         }
-        catch
+        catch (EmailDeliveryException exception)
         {
+            _logger.LogWarning("OTP email delivery failed: {Code}", exception.Code);
             return StatusCode(503, new
             {
+                code = exception.Code,
+                message = exception.Message
+            });
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError("OTP email delivery failed: {ExceptionType}", exception.GetType().Name);
+            return StatusCode(503, new
+            {
+                code = "EMAIL_SERVICE_UNAVAILABLE",
                 message =
-                    "Khong gui duoc email OTP. "
-                    + "Vui long kiem tra cau hinh SMTP"
+                    "Dich vu email tam thoi khong gui duoc OTP. Vui long thu lai sau."
             });
         }
 

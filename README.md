@@ -49,6 +49,36 @@ Sau khi day code len nhanh ket noi voi Render, xem trang Events cua dich vu.
 Neu Auto-Deploy dang tat, chon **Manual Deploy > Deploy latest commit**.
 Giu nguyen cac bien moi truong database, JWT va email da cau hinh.
 
+## Cau hinh email OTP tren Render
+
+Backend gui OTP qua Resend HTTPS, khong dung SMTP. Dat trong Render > Environment:
+
+- `Resend__ApiKey`: API key co quyen gui email, luu truc tiep tren Render.
+- `Resend__FromEmail`: dia chi thuoc ten mien da xac minh tren Resend,
+  vi du `noreply@your-domain.example` (thay bang ten mien cua ban).
+
+`onboarding@resend.dev` chi gui thu den email cua chu tai khoan Resend.
+De nhan vien dung email khac nhan OTP, can xac minh ten mien gui va doi FromEmail.
+Khong dat FromEmail thanh dia chi Gmail neu khong so huu/xac minh duoc ten mien do.
+
+API tra HTTP 503 kem ma loi de phan biet nguyen nhan:
+
+| Ma | Can kiem tra |
+| --- | --- |
+| `EMAIL_NOT_CONFIGURED` | Thieu `Resend__ApiKey` |
+| `EMAIL_TEST_MODE` | Dang dung dia chi gui thu `resend.dev`, nguoi nhan bi gioi han |
+| `EMAIL_DOMAIN_NOT_VERIFIED` | Ten mien cua dia chi gui chua duoc xac minh |
+| `EMAIL_PROVIDER_AUTH_FAILED` | API key/quyen gui email khong hop le |
+| `EMAIL_RATE_LIMITED` | Dich vu email gioi han luot gui |
+| `EMAIL_SERVICE_UNAVAILABLE` | Loi ket noi hoac dich vu email |
+
+Log chi ghi ma loi, khong ghi OTP, API key hoac noi dung email.
+Kiem tra phan loai loi bang HTTP gia lap (khong gui email that):
+
+```powershell
+dotnet run --project tests/EmailServiceChecks/EmailServiceChecks.csproj --configuration Release
+```
+
 Kiem tra sau khi trien khai:
 
 ```powershell
