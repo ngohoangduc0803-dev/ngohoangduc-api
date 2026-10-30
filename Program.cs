@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using ngohoangduc.Models;
 using ngohoangduc.Services;
+using ngohoangduc.Documentation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,7 +17,7 @@ var builder = WebApplication.CreateBuilder(args);
 // ==============================================
 
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(ApiDocumentation.Configure);
 builder.Services.AddMemoryCache();
 
 // ==============================================
@@ -224,10 +225,20 @@ app.MapGet("/health", () =>
     });
 });
 
-if (app.Environment.IsDevelopment())
+// Public API documentation is available on Render as well as locally.
+app.MapOpenApi();
+app.UseSwaggerUI(options =>
 {
-    app.MapOpenApi();
-}
+    options.RoutePrefix = "docs";
+    options.SwaggerEndpoint("/openapi/v1.json", "Ngo Hoang Duc API v1");
+    options.DocumentTitle = "Ngo Hoang Duc - API cham cong";
+    options.EnableTryItOutByDefault();
+});
+
+app.MapGet("/", () => Results.Redirect("/docs"))
+    .ExcludeFromDescription();
+app.MapGet("/swagger", () => Results.Redirect("/docs"))
+    .ExcludeFromDescription();
 
 // ==============================================
 // 8. MIDDLEWARE
